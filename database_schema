@@ -1,128 +1,651 @@
--- Create Database (if it doesn't exist)
-CREATE DATABASE IF NOT EXISTS library_system;
-USE library_system;
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Host: 127.0.0.1
+-- Generation Time: Nov 26, 2025 at 10:29 AM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
 
--- Drop tables if they already exist to ensure a clean start
-DROP TABLE IF EXISTS Borrowing_Record, Payment, Penalty, Reservation, Borrow, Book, Semester, Users;
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
 
--- ==========================
--- USER TABLE
--- ==========================
-CREATE TABLE Users (
-    UserID INT AUTO_INCREMENT PRIMARY KEY,
-    Username VARCHAR(20) UNIQUE NOT NULL,
-    Name VARCHAR(100) NOT NULL,
-    Role ENUM('Student','Teacher','Librarian','Staff') NOT NULL,
-    Email VARCHAR(100) UNIQUE NOT NULL,
-    PasswordHash VARCHAR(255) NOT NULL
-);
 
--- ==========================
--- SEMESTER TABLE
--- ==========================
-CREATE TABLE Semester (
-    SemesterID INT AUTO_INCREMENT PRIMARY KEY,
-    StartDate DATE NOT NULL,
-    EndDate DATE NOT NULL,
-    Student_Borrow_Limit INT DEFAULT 3
-);
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
 
--- ==========================
--- BOOK TABLE
--- ==========================
-CREATE TABLE Book (
-    BookID INT AUTO_INCREMENT PRIMARY KEY,
-    Title VARCHAR(150),
-    Author VARCHAR(100),
-    ISBN VARCHAR(30) UNIQUE,
-    -- NEW COLUMN: Stores book cost for replacement fee logic
-    Price DECIMAL(10,2), 
-    -- NEW COLUMN: Stores path to cover image
-    CoverImagePath VARCHAR(255), 
-    Category VARCHAR(50) NULL,
-    CopiesTotal INT DEFAULT 1,
-    CopiesAvailable INT DEFAULT 1,
-    Status ENUM('Available','Reserved','Borrowed','Archived') DEFAULT 'Available'
-);
+--
+-- Database: `library_system`
+--
 
--- ==========================
--- BORROW TABLE
--- ==========================
-CREATE TABLE Borrow (
-    BorrowID INT AUTO_INCREMENT PRIMARY KEY,
-    UserID INT NOT NULL,
-    BookID INT NOT NULL,
-    SemesterID INT,
-    BorrowDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-    DueDate DATETIME NOT NULL,
-    ReturnDate DATETIME NULL,
-    Status ENUM('Borrowed','Returned','Overdue','Lost') DEFAULT 'Borrowed',
-    ProcessedBy INT,
-    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
-    FOREIGN KEY (BookID) REFERENCES Book(BookID) ON DELETE CASCADE,
-    FOREIGN KEY (SemesterID) REFERENCES Semester(SemesterID) ON DELETE SET NULL,
-    FOREIGN KEY (ProcessedBy) REFERENCES Users(UserID) ON DELETE SET NULL
-);
+-- --------------------------------------------------------
 
--- ==========================
--- RESERVATION TABLE
--- ==========================
-CREATE TABLE Reservation (
-    ReservationID INT AUTO_INCREMENT PRIMARY KEY,
-    UserID INT NOT NULL,
-    BookID INT NOT NULL,
-    ReservationDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-    ExpiryDate DATETIME NOT NULL,
-    Status ENUM('Active','Expired','Cancelled','Fulfilled') DEFAULT 'Active',
-    FulfilledBy INT NULL,
-    
-    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
-    FOREIGN KEY (BookID) REFERENCES Book(BookID) ON DELETE CASCADE,
-    FOREIGN KEY (FulfilledBy) REFERENCES Users(UserID) ON DELETE SET NULL
-);
+--
+-- Table structure for table `book`
+--
 
--- ==========================
--- PENALTY TABLE (For Replacement Fees)
--- ==========================
-CREATE TABLE Penalty (
-    PenaltyID INT AUTO_INCREMENT PRIMARY KEY,
-    BorrowID INT NOT NULL,
-    UserID INT NOT NULL,
-    AmountDue DECIMAL(10,2) NOT NULL,
-    IssuedDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PaidDate DATETIME NULL,
-    Status ENUM('Pending','Paid') DEFAULT 'Pending',
-    FOREIGN KEY (BorrowID) REFERENCES Borrow(BorrowID) ON DELETE CASCADE,
-    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE
-);
+CREATE TABLE `book` (
+  `BookID` int(11) NOT NULL,
+  `Title` varchar(150) NOT NULL,
+  `Author` varchar(100) DEFAULT NULL,
+  `ISBN` varchar(30) DEFAULT NULL,
+  `Price` decimal(10,2) DEFAULT NULL,
+  `Category` varchar(50) DEFAULT NULL,
+  `CoverImagePath` varchar(255) DEFAULT NULL,
+  `Status` enum('Available','Reserved','Borrowed','Archived') DEFAULT 'Available'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- ==========================
--- PAYMENT TABLE
--- ==========================
-CREATE TABLE Payment (
-    PaymentID INT AUTO_INCREMENT PRIMARY KEY,
-    UserID INT NOT NULL,
-    PenaltyID INT,
-    ReservationID INT NULL,
-    RecordID INT NULL,
-    Amount DECIMAL(10,2) NOT NULL,
-    PaymentDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-    Method ENUM('Cash','GCash','Card') DEFAULT 'Cash',
-    Status ENUM('Pending','Completed') DEFAULT 'Completed',
-    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
-    FOREIGN KEY (PenaltyID) REFERENCES Penalty(PenaltyID) ON DELETE SET NULL,
-    FOREIGN KEY (ReservationID) REFERENCES Reservation(ReservationID) ON DELETE SET NULL
-);
+--
+-- Dumping data for table `book`
+--
 
--- ==========================
--- BORROWING RECORD TABLE (Audit log)
--- ==========================
-CREATE TABLE Borrowing_Record (
-    RecordID INT AUTO_INCREMENT PRIMARY KEY,
-    BorrowID INT NOT NULL,
-    ActionTimestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    ActionType ENUM('Borrowed','Returned','Cleared') NOT NULL,
-    ChangedBy INT,
-    FOREIGN KEY (BorrowID) REFERENCES Borrow(BorrowID) ON DELETE CASCADE,
-    FOREIGN KEY (ChangedBy) REFERENCES Users(UserID) ON DELETE SET NULL
-);
+INSERT INTO `book` (`BookID`, `Title`, `Author`, `ISBN`, `Price`, `Category`, `CoverImagePath`, `Status`) VALUES
+(1, 'The Secret History', 'Donna Tartt', '978-1400031702', 350.50, 'Fiction', 'https://covers.openlibrary.org/b/isbn/978-1400031702-L.jpg', 'Available'),
+(2, 'Will Northaway and the Price of Loyalty', 'Susan Olasky', '978-1433508905', 200.00, 'Fiction', 'https://covers.openlibrary.org/b/isbn/978-1433508905-L.jpg', 'Available'),
+(3, 'The Wild Man', 'Mark Barratt', '978-1782954835', 515.00, 'Fiction', 'https://covers.openlibrary.org/b/isbn/978-1782954835-L.jpg', 'Available'),
+(4, 'A Study in Scarlet', 'Arthur Conan Doyle', '979-8798434640', 800.00, 'Mystery and detective', 'https://covers.openlibrary.org/b/isbn/979-8798434640-L.jpg', 'Available'),
+(5, 'Sargon, a Computer Chess Program', 'Dan Spracklen and Kathe Spracklen', '0810451557', 399.00, 'Programming', 'https://covers.openlibrary.org/b/isbn/0810451557-L.jpg', 'Available'),
+(8, 'Prisoners of Childhood', 'Alice Miller', '978-0465062874', 450.00, 'Mental Health', 'https://covers.openlibrary.org/b/isbn/978-0465062874-L.jpg', 'Available'),
+(9, 'Memoirs of My Nervous Illness', 'Daniel Paul Schreber', '0674565169', 350.00, 'Mental Health', 'https://covers.openlibrary.org/b/isbn/0674565169-L.jpg', 'Available'),
+(10, 'How to Live 365 Days a Year', 'John Albert Schindler', '0762416955', 499.00, 'Mental Health', 'https://covers.openlibrary.org/b/isbn/0762416955-L.jpg', 'Available'),
+(11, 'Minding My Own Business', 'Marjorie McVicar', '978-0867211498', 450.00, 'Management', 'https://covers.openlibrary.org/b/isbn/978-0867211498-L.jpg', 'Available'),
+(12, 'How to Manage Conflict', 'Peg Pickering', '978-1564144409', 400.00, 'Business & Economics', 'https://covers.openlibrary.org/b/isbn/978-1564144409-L.jpg', 'Available'),
+(13, 'Organizational Behavior', 'Stephen P. Robbins', '0138961921', 300.00, 'Business & Economics', 'https://covers.openlibrary.org/b/isbn/0138961921-L.jpg', 'Available'),
+(14, 'Fundamentals of Financial Management', 'Eugene F. Brigham and Joel F. Houston', '0324611161', 600.00, 'Business & Economics', 'https://covers.openlibrary.org/b/isbn/0324611161-L.jpg', 'Available'),
+(15, 'The Design of Everyday Things', 'Donald A. Norman', '0465050654', 499.00, 'Business & Economics', 'https://covers.openlibrary.org/b/isbn/0465050654-L.jpg', 'Available'),
+(16, 'Element of Time', 'Cathy Livoni', '0152253696', 299.00, 'Fiction', 'https://covers.openlibrary.org/b/isbn/0152253696-L.jpg', 'Available'),
+(17, 'Sales Coaching', 'Linda Richardson', '0070523827', 250.00, 'Management', 'https://covers.openlibrary.org/b/isbn/0070523827-L.jpg', 'Available'),
+(18, 'Trust & Betrayal in the Workplace', 'Dennis S. Reina and Michelle L. Reina', '978-1576753774', 350.00, 'Management', 'https://covers.openlibrary.org/b/isbn/978-1576753774-L.jpg', 'Available'),
+(19, 'Fundamentals of Business Analysis', 'Howard B. Baltz and Richard B. Baltz', '0133344665', 599.00, 'Management', 'https://covers.openlibrary.org/b/isbn/0133344665-L.jpg', 'Available'),
+(20, 'I Only Want What\'s Best for You', 'Judith R. Brown', '0434111376', 450.00, 'Mental Health', 'https://covers.openlibrary.org/b/isbn/0434111376-L.jpg', 'Available'),
+(21, 'The Invisible Man', 'H. G. Wells', '0198702671', 699.00, 'Mystery and detective', 'https://covers.openlibrary.org/b/isbn/0198702671-L.jpg', 'Available'),
+(22, 'Footsteps', 'Leon Garfield', '0440026342', 350.00, 'Mystery and detective', 'https://covers.openlibrary.org/b/isbn/0440026342-L.jpg', 'Available'),
+(23, 'Two-minute Mysteries Collection', 'Donald J. Sobol', '043964383X', 500.00, 'Mystery and detective', 'https://covers.openlibrary.org/b/isbn/043964383X-L.jpg', 'Available'),
+(24, 'Learning PHP, MySQL & JavaScript With JQuery, CSS & HTML5', 'Robin Nixon', '978-1491918661', 899.00, 'Programming', 'https://covers.openlibrary.org/b/isbn/978-1491918661-L.jpg', 'Available'),
+(25, 'HTML5 Games Creating Fun with HTML5, CSS3, and WebGL', 'Jacob Seidelin', '1119975085', 799.00, 'Programming', 'https://covers.openlibrary.org/b/isbn/1119975085-L.jpg', 'Available'),
+(26, 'Get Coding! Learn HTML, CSS, and JavaScript and Build a Website, App, and Game', 'Young Rewired State', '978-0763698331', 899.00, 'Programming', 'https://covers.openlibrary.org/b/isbn/978-0763698331-L.jpg', 'Available');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `book_copy`
+--
+
+CREATE TABLE `book_copy` (
+  `CopyID` int(11) NOT NULL,
+  `BookID` int(11) NOT NULL,
+  `Status` enum('Available','Borrowed','Reserved','Lost','Damaged') DEFAULT 'Available'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `book_copy`
+--
+
+INSERT INTO `book_copy` (`CopyID`, `BookID`, `Status`) VALUES
+(1, 4, 'Available'),
+(2, 4, 'Available'),
+(3, 4, 'Available'),
+(4, 4, 'Available'),
+(5, 4, 'Available'),
+(6, 4, 'Available'),
+(7, 4, 'Available'),
+(8, 4, 'Available'),
+(9, 4, 'Available'),
+(10, 4, 'Available'),
+(11, 16, 'Available'),
+(12, 16, 'Available'),
+(13, 16, 'Available'),
+(14, 16, 'Available'),
+(15, 16, 'Available'),
+(16, 16, 'Available'),
+(17, 16, 'Available'),
+(18, 22, 'Available'),
+(19, 22, 'Available'),
+(20, 22, 'Available'),
+(21, 22, 'Available'),
+(22, 22, 'Available'),
+(23, 22, 'Available'),
+(24, 22, 'Available'),
+(25, 19, 'Available'),
+(26, 19, 'Available'),
+(27, 19, 'Available'),
+(28, 19, 'Available'),
+(29, 19, 'Available'),
+(30, 19, 'Available'),
+(31, 14, 'Available'),
+(32, 14, 'Available'),
+(33, 14, 'Available'),
+(34, 14, 'Available'),
+(35, 14, 'Available'),
+(36, 14, 'Available'),
+(37, 14, 'Available'),
+(38, 14, 'Available'),
+(39, 26, 'Available'),
+(40, 26, 'Available'),
+(41, 26, 'Available'),
+(42, 26, 'Available'),
+(43, 26, 'Available'),
+(44, 26, 'Available'),
+(45, 26, 'Available'),
+(46, 26, 'Available'),
+(47, 26, 'Available'),
+(48, 10, 'Available'),
+(49, 10, 'Available'),
+(50, 10, 'Available'),
+(51, 10, 'Available'),
+(52, 10, 'Available'),
+(53, 10, 'Available'),
+(54, 12, 'Available'),
+(55, 12, 'Available'),
+(56, 12, 'Available'),
+(57, 12, 'Available'),
+(58, 12, 'Available'),
+(59, 12, 'Available'),
+(60, 12, 'Available'),
+(61, 25, 'Available'),
+(62, 25, 'Available'),
+(63, 25, 'Available'),
+(64, 25, 'Available'),
+(65, 25, 'Available'),
+(66, 25, 'Available'),
+(67, 20, 'Available'),
+(68, 20, 'Available'),
+(69, 20, 'Available'),
+(70, 20, 'Available'),
+(71, 24, 'Available'),
+(72, 24, 'Available'),
+(73, 24, 'Available'),
+(74, 24, 'Available'),
+(75, 24, 'Available'),
+(76, 24, 'Available'),
+(77, 24, 'Available'),
+(78, 24, 'Available'),
+(79, 9, 'Available'),
+(80, 9, 'Available'),
+(81, 9, 'Available'),
+(82, 9, 'Available'),
+(83, 9, 'Available'),
+(84, 11, 'Available'),
+(85, 11, 'Available'),
+(86, 11, 'Available'),
+(87, 11, 'Available'),
+(88, 13, 'Available'),
+(89, 13, 'Available'),
+(90, 13, 'Available'),
+(91, 13, 'Available'),
+(92, 13, 'Available'),
+(93, 13, 'Available'),
+(94, 8, 'Available'),
+(95, 8, 'Available'),
+(96, 8, 'Available'),
+(97, 8, 'Available'),
+(98, 8, 'Available'),
+(99, 17, 'Available'),
+(100, 17, 'Available'),
+(101, 17, 'Available'),
+(102, 17, 'Available'),
+(103, 17, 'Available'),
+(104, 5, 'Available'),
+(105, 5, 'Available'),
+(106, 5, 'Available'),
+(107, 5, 'Available'),
+(108, 5, 'Available'),
+(109, 5, 'Available'),
+(110, 5, 'Available'),
+(111, 5, 'Available'),
+(112, 15, 'Available'),
+(113, 15, 'Available'),
+(114, 15, 'Available'),
+(115, 15, 'Available'),
+(116, 15, 'Available'),
+(117, 21, 'Available'),
+(118, 21, 'Available'),
+(119, 21, 'Available'),
+(120, 21, 'Available'),
+(121, 1, 'Available'),
+(122, 1, 'Available'),
+(123, 1, 'Available'),
+(124, 1, 'Available'),
+(125, 1, 'Available'),
+(126, 1, 'Available'),
+(127, 3, 'Available'),
+(128, 3, 'Available'),
+(129, 3, 'Available'),
+(130, 3, 'Available'),
+(131, 18, 'Available'),
+(132, 18, 'Available'),
+(133, 18, 'Available'),
+(134, 18, 'Available'),
+(135, 23, 'Available'),
+(136, 23, 'Available'),
+(137, 23, 'Available'),
+(138, 2, 'Available'),
+(139, 2, 'Available'),
+(140, 2, 'Available'),
+(141, 2, 'Available'),
+(142, 2, 'Available');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `borrow`
+--
+
+CREATE TABLE `borrow` (
+  `BorrowID` int(11) NOT NULL,
+  `UserID` int(11) NOT NULL,
+  `CopyID` int(11) NOT NULL,
+  `SemesterID` int(11) DEFAULT NULL,
+  `BorrowDate` datetime DEFAULT current_timestamp(),
+  `DueDate` datetime NOT NULL,
+  `ReturnDate` datetime DEFAULT NULL,
+  `Status` enum('Borrowed','Returned','Overdue','Lost') DEFAULT 'Borrowed',
+  `ProcessedBy` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `borrowing_record`
+--
+
+CREATE TABLE `borrowing_record` (
+  `RecordID` int(11) NOT NULL,
+  `BorrowID` int(11) NOT NULL,
+  `ActionTimestamp` datetime DEFAULT current_timestamp(),
+  `ActionType` enum('Borrowed','Returned','Cleared') NOT NULL,
+  `ChangedBy` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `management_log`
+--
+
+CREATE TABLE `management_log` (
+  `LogID` int(11) NOT NULL,
+  `UserID` int(11) NOT NULL,
+  `BookID` int(11) DEFAULT NULL,
+  `ActionType` enum('Added','Updated','Archived') NOT NULL,
+  `Description` varchar(255) NOT NULL,
+  `Timestamp` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `management_log`
+--
+
+INSERT INTO `management_log` (`LogID`, `UserID`, `BookID`, `ActionType`, `Description`, `Timestamp`) VALUES
+(1, 1, 1, 'Added', 'Historical record: Book \"The Secret History\" added to catalog.', '2025-10-17 22:40:44'),
+(2, 1, 2, 'Added', 'Historical record: Book \"Will Northaway and the Price of Loyalty\" added to catalog.', '2025-10-17 22:40:44'),
+(3, 1, 3, 'Added', 'Historical record: Book \"The Wild Man\" added to catalog.', '2025-10-17 22:40:44'),
+(4, 1, 4, 'Added', 'Historical record: Book \"A Study in Scarlet\" added to catalog.', '2025-10-17 22:40:44'),
+(5, 1, 5, 'Added', 'Historical record: Book \"Sargon, a Computer Chess Program\" added to catalog.', '2025-10-17 22:40:44'),
+(6, 1, 8, 'Added', 'Historical record: Book \"Prisoners of Childhood\" added to catalog.', '2025-10-17 22:40:44'),
+(8, 1, 9, 'Added', 'Added book \'Memoirs of My Nervous Illness\' with ISBN 0674565169. Total copies: 5.', '2025-10-17 22:43:06'),
+(9, 1, 10, 'Added', 'Added book \'How to Live 365 Days a Year\' with ISBN 0762416955. Total copies: 10.', '2025-10-17 22:44:42'),
+(10, 1, 11, 'Added', 'Added book \'Minding My Own Business\' with ISBN 978-0867211498. Total copies: 5.', '2025-10-17 22:52:34'),
+(11, 1, 12, 'Added', 'Added book \'How to Manage Conflict\' with ISBN 978-1564144409. Total copies: 6.', '2025-10-17 22:53:53'),
+(12, 1, 4, 'Updated', 'Updated details for book \'A Study in Scarlet\'. Total copies changed from 5 to 5.', '2025-10-18 12:53:31'),
+(13, 1, 10, 'Updated', 'Updated book details. Category changed from \'\' to \'Mental Health\'', '2025-10-18 13:06:08'),
+(14, 1, 10, 'Updated', 'Book record refreshed; no data changes detected.', '2025-10-18 13:08:11'),
+(15, 1, 0, 'Updated', 'Book record refreshed; no data changes detected.', '2025-10-18 13:08:16'),
+(16, 1, 12, 'Updated', 'Updated book details. Category changed from \'\' to \'Mental Health\'', '2025-10-18 13:09:07'),
+(17, 1, 9, 'Updated', 'Updated book details. Category changed from \'\' to \'Mental Health\'', '2025-10-18 13:09:42'),
+(18, 1, 12, 'Updated', 'Updated book details. Category changed from \'Mental Health\' to \'Entrepreneurship\'', '2025-10-18 13:11:14'),
+(19, 1, 11, 'Updated', 'Updated book details. Category changed from \'\' to \'Entrepreneurship\'', '2025-10-18 13:12:12'),
+(20, 1, 8, 'Updated', 'Updated book details. Category changed from \'\' to \'Mental Health\'', '2025-10-18 13:12:34'),
+(21, 1, 5, 'Updated', 'Updated book details. Category changed from \'\' to \'Programming\'', '2025-10-18 13:14:17'),
+(22, 1, 1, 'Updated', 'Updated book details. Category changed from \'\' to \'Fiction\'', '2025-10-18 13:22:42'),
+(23, 1, 3, 'Updated', 'Updated book details. Category changed from \'\' to \'Mystery and detective\'', '2025-10-18 13:24:35'),
+(24, 1, 2, 'Updated', 'Updated book details. Category changed from \'\' to \'Fiction\'', '2025-10-18 13:25:19'),
+(25, 1, 4, 'Updated', 'Updated book details. Category changed from \'\' to \'Mystery and detective\'', '2025-10-18 14:01:24'),
+(26, 1, 10, 'Updated', 'Updated book details. Category changed from \'\' to \'Mental Health\'', '2025-10-18 14:02:01'),
+(27, 1, 12, 'Updated', 'Updated book details. Category changed from \'\' to \'Business & Economics\'', '2025-10-18 14:03:47'),
+(28, 1, 9, 'Updated', 'Updated book details. Category changed from \'\' to \'Mental Health\'', '2025-10-18 14:04:35'),
+(29, 1, 11, 'Updated', 'Updated book details. Category changed from \'\' to \'Management\'', '2025-10-18 14:05:22'),
+(30, 1, 8, 'Updated', 'Updated book details. Category changed from \'\' to \'Mental Health\'', '2025-10-18 14:05:55'),
+(31, 1, 5, 'Updated', 'Updated book details. Category changed from \'\' to \'Programming\'', '2025-10-18 14:06:31'),
+(32, 1, 1, 'Updated', 'Updated book details. Category changed from \'\' to \'Fiction\'', '2025-10-18 14:06:57'),
+(33, 1, 3, 'Updated', 'Updated book details. Category changed from \'\' to \'Fiction\'', '2025-10-18 14:07:26'),
+(34, 1, 2, 'Updated', 'Updated book details. Category changed from \'\' to \'Fiction\'', '2025-10-18 14:08:01'),
+(35, 1, 13, 'Added', 'Added book \'Organizational Behavior\' with ISBN 0138961921. Total copies: 10.', '2025-10-18 14:10:48'),
+(36, 1, 14, 'Added', 'Added book \'Fundamentals of Financial Management\' with ISBN 0324611161. Total copies: 8.', '2025-10-18 14:17:23'),
+(37, 1, 15, 'Added', 'Added book \'The Design of Everyday Things\' with ISBN 0465050654. Total copies: 5.', '2025-10-18 14:19:45'),
+(38, 1, 16, 'Added', 'Added book \'Element of Time\' with ISBN 0152253696. Total copies: 3.', '2025-10-18 14:24:54'),
+(39, 1, 17, 'Added', 'Added book \'Sales Coaching\' with ISBN 0070523827. Total copies: 5.', '2025-10-18 14:28:04'),
+(40, 1, 18, 'Added', 'Added book \'Trust & Betrayal in the Workplace\' with ISBN 978-1576753774. Total copies: 5.', '2025-10-18 14:30:22'),
+(41, 1, 19, 'Added', 'Added book \'Fundamentals of Business Analysis\' with ISBN 0133344665. Total copies: 10.', '2025-10-18 14:33:00'),
+(42, 1, 20, 'Added', 'Added book \'I Only Want What\'s Best for You\' with ISBN 0434111376. Total copies: 7.', '2025-10-18 14:37:09'),
+(43, 1, 21, 'Added', 'Added book \'The Invisible Man\' with ISBN 0198702671. Total copies: 5.', '2025-10-18 14:57:01'),
+(44, 1, 22, 'Added', 'Added book \'Footsteps\' with ISBN 0440026342. Total copies: 7.', '2025-10-18 14:59:49'),
+(45, 1, 23, 'Added', 'Added book \'Two-minute Mysteries Collection\' with ISBN 043964383X. Total copies: 8.', '2025-10-18 15:01:30'),
+(46, 1, 24, 'Added', 'Added book \'Learning PHP, MySQL & JavaScript With JQuery, CSS & HTML5\' with ISBN 978-1491918661. Total copies: 5.', '2025-10-18 15:07:17'),
+(47, 1, 25, 'Added', 'Added book \'HTML5 Games Creating Fun with HTML5, CSS3, and WebGL\' with ISBN 1119975085. Total copies: 7.', '2025-10-18 15:08:40'),
+(48, 1, 26, 'Added', 'Added book \'Get Coding! Learn HTML, CSS, and JavaScript and Build a Website, App, and Game\' with ISBN 978-0763698331. Total copies: 8.', '2025-10-18 15:10:15'),
+(49, 1, 4, 'Updated', 'Book record refreshed; no data changes detected.', '2025-10-18 15:35:59'),
+(50, 1, 4, 'Updated', 'Stock synchronized. Total copies adjusted to 10. Added 10 new copies.', '2025-10-18 23:08:11'),
+(51, 1, 4, 'Updated', 'Stock synchronized. Total copies adjusted to 10. ', '2025-10-18 23:08:18'),
+(52, 1, 16, 'Updated', 'Stock synchronized. Total copies adjusted to 7. Added 7 new copies.', '2025-10-18 23:10:24'),
+(53, 1, 22, 'Updated', 'Stock synchronized. Total copies adjusted to 7. Added 7 new copies.', '2025-10-18 23:11:15'),
+(54, 1, 19, 'Updated', 'Stock synchronized. Total copies adjusted to 6. Added 6 new copies.', '2025-10-18 23:11:39'),
+(55, 1, 14, 'Updated', 'Stock synchronized. Total copies adjusted to 8. Added 8 new copies.', '2025-10-18 23:12:23'),
+(56, 1, 26, 'Updated', 'Stock synchronized. Total copies adjusted to 9. Added 9 new copies.', '2025-10-18 23:12:51'),
+(57, 1, 10, 'Updated', 'Stock synchronized. Total copies adjusted to 6. Added 6 new copies.', '2025-10-18 23:13:11'),
+(58, 1, 12, 'Updated', 'Stock synchronized. Total copies adjusted to 7. Added 7 new copies.', '2025-10-18 23:13:45'),
+(59, 1, 25, 'Updated', 'Stock synchronized. Total copies adjusted to 6. Added 6 new copies.', '2025-10-18 23:14:32'),
+(60, 1, 20, 'Updated', 'Stock synchronized. Total copies adjusted to 4. Added 4 new copies.', '2025-10-18 23:14:58'),
+(61, 1, 24, 'Updated', 'Stock synchronized. Total copies adjusted to 8. Added 8 new copies.', '2025-10-18 23:15:18'),
+(62, 1, 9, 'Updated', 'Stock synchronized. Total copies adjusted to 5. Added 5 new copies.', '2025-10-18 23:15:44'),
+(63, 1, 11, 'Updated', 'Stock synchronized. Total copies adjusted to 4. Added 4 new copies.', '2025-10-18 23:16:10'),
+(64, 1, 13, 'Updated', 'Stock synchronized. Total copies adjusted to 6. Added 6 new copies.', '2025-10-18 23:16:37'),
+(65, 1, 8, 'Updated', 'Stock synchronized. Total copies adjusted to 5. Added 5 new copies.', '2025-10-18 23:16:54'),
+(66, 1, 17, 'Updated', 'Stock synchronized. Total copies adjusted to 5. Added 5 new copies.', '2025-10-18 23:17:14'),
+(67, 1, 5, 'Updated', 'Stock synchronized. Total copies adjusted to 8. Added 8 new copies.', '2025-10-18 23:17:36'),
+(68, 1, 15, 'Updated', 'Stock synchronized. Total copies adjusted to 5. Added 5 new copies.', '2025-10-18 23:17:57'),
+(69, 1, 21, 'Updated', 'Stock synchronized. Total copies adjusted to 4. Added 4 new copies.', '2025-10-18 23:18:13'),
+(70, 1, 1, 'Updated', 'Stock synchronized. Total copies adjusted to 6. Added 6 new copies.', '2025-10-18 23:18:35'),
+(71, 1, 3, 'Updated', 'Stock synchronized. Total copies adjusted to 4. Added 4 new copies.', '2025-10-18 23:18:55'),
+(72, 1, 18, 'Updated', 'Stock synchronized. Total copies adjusted to 4. Added 4 new copies.', '2025-10-18 23:19:15'),
+(73, 1, 23, 'Updated', 'Stock synchronized. Total copies adjusted to 3. Added 3 new copies.', '2025-10-18 23:19:43'),
+(74, 1, 2, 'Updated', 'Stock synchronized. Total copies adjusted to 5. Added 5 new copies.', '2025-10-18 23:20:00');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `payment`
+--
+
+CREATE TABLE `payment` (
+  `PaymentID` int(11) NOT NULL,
+  `UserID` int(11) NOT NULL,
+  `PenaltyID` int(11) DEFAULT NULL,
+  `ReservationID` int(11) DEFAULT NULL,
+  `RecordID` int(11) DEFAULT NULL,
+  `Amount` decimal(10,2) NOT NULL,
+  `PaymentDate` datetime DEFAULT current_timestamp(),
+  `Method` enum('Cash','GCash','Card') DEFAULT 'Cash',
+  `Status` enum('Pending','Completed') DEFAULT 'Completed'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `penalty`
+--
+
+CREATE TABLE `penalty` (
+  `PenaltyID` int(11) NOT NULL,
+  `BorrowID` int(11) NOT NULL,
+  `UserID` int(11) NOT NULL,
+  `AmountDue` decimal(10,2) NOT NULL,
+  `IssuedDate` datetime DEFAULT current_timestamp(),
+  `PaidDate` datetime DEFAULT NULL,
+  `Status` enum('Pending','Paid') DEFAULT 'Pending'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `reservation`
+--
+
+CREATE TABLE `reservation` (
+  `ReservationID` int(11) NOT NULL,
+  `UserID` int(11) NOT NULL,
+  `BookID` int(11) NOT NULL,
+  `ReservationDate` datetime DEFAULT current_timestamp(),
+  `ExpiryDate` datetime NOT NULL,
+  `Status` enum('Active','Expired','Cancelled','Fulfilled') DEFAULT 'Active',
+  `FulfilledBy` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `semester`
+--
+
+CREATE TABLE `semester` (
+  `SemesterID` int(11) NOT NULL,
+  `StartDate` date NOT NULL,
+  `EndDate` date NOT NULL,
+  `Student_Borrow_Limit` int(11) DEFAULT 3
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `users`
+--
+
+CREATE TABLE `users` (
+  `UserID` int(11) NOT NULL,
+  `Username` varchar(20) NOT NULL,
+  `Name` varchar(100) NOT NULL,
+  `Role` enum('Student','Teacher','Librarian','Staff') NOT NULL,
+  `Email` varchar(100) NOT NULL,
+  `PasswordHash` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `users`
+--
+
+INSERT INTO `users` (`UserID`, `Username`, `Name`, `Role`, `Email`, `PasswordHash`) VALUES
+(1, 'alisonmillward', 'Alison Millward', 'Librarian', 'alisonmillward@gmail.com', '$2y$10$NzXO2sA7NcdWrKViOulVkO.tiBdVvAd3qdur643QYW0r6bSFGaz6.'),
+(2, 'bobsmith', 'Bob Smith', 'Staff', 'bobsmith@gmail.com', '$2y$10$uplAYOxir9LoqekxkHT3OO8PyorLtFr8uygrouGSZkHlTYP83aoEW'),
+(3, 'alicecoop', 'Alice Coop', 'Student', 'alicecoop@gmail.com', '$2y$10$sali7Ai9OK5H3diNy.knSujV7ig9hfHZ8LZuMPK1hF/RXZnvQvq8i'),
+(4, 'anneroe', 'Anne Roe ', 'Teacher', 'anneroe@gmail.com', '$2y$10$HL5KesEqXrd69gdUX2SHp.MG/Jwvz06lSyxAU1pVE8DGa.6i98Tfa'),
+(5, 'maurinefuller', 'Maurine Fuller', 'Student', 'maurinefuller@gmail.com', '$2y$10$YSQ0ocWlg7BvuOO9Jb3pi.PBBxCqjCsCKsDmGeGQHZTpMFHnfC/Zu');
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `book`
+--
+ALTER TABLE `book`
+  ADD PRIMARY KEY (`BookID`),
+  ADD UNIQUE KEY `ISBN` (`ISBN`);
+
+--
+-- Indexes for table `book_copy`
+--
+ALTER TABLE `book_copy`
+  ADD PRIMARY KEY (`CopyID`),
+  ADD KEY `BookID` (`BookID`);
+
+--
+-- Indexes for table `borrow`
+--
+ALTER TABLE `borrow`
+  ADD PRIMARY KEY (`BorrowID`),
+  ADD KEY `UserID` (`UserID`),
+  ADD KEY `SemesterID` (`SemesterID`),
+  ADD KEY `ProcessedBy` (`ProcessedBy`),
+  ADD KEY `borrow_fk_copy` (`CopyID`);
+
+--
+-- Indexes for table `borrowing_record`
+--
+ALTER TABLE `borrowing_record`
+  ADD PRIMARY KEY (`RecordID`),
+  ADD KEY `BorrowID` (`BorrowID`),
+  ADD KEY `ChangedBy` (`ChangedBy`);
+
+--
+-- Indexes for table `management_log`
+--
+ALTER TABLE `management_log`
+  ADD PRIMARY KEY (`LogID`),
+  ADD KEY `UserID` (`UserID`);
+
+--
+-- Indexes for table `payment`
+--
+ALTER TABLE `payment`
+  ADD PRIMARY KEY (`PaymentID`),
+  ADD KEY `UserID` (`UserID`),
+  ADD KEY `PenaltyID` (`PenaltyID`),
+  ADD KEY `ReservationID` (`ReservationID`);
+
+--
+-- Indexes for table `penalty`
+--
+ALTER TABLE `penalty`
+  ADD PRIMARY KEY (`PenaltyID`),
+  ADD KEY `BorrowID` (`BorrowID`),
+  ADD KEY `UserID` (`UserID`);
+
+--
+-- Indexes for table `reservation`
+--
+ALTER TABLE `reservation`
+  ADD PRIMARY KEY (`ReservationID`),
+  ADD KEY `UserID` (`UserID`),
+  ADD KEY `BookID` (`BookID`),
+  ADD KEY `FulfilledBy` (`FulfilledBy`);
+
+--
+-- Indexes for table `semester`
+--
+ALTER TABLE `semester`
+  ADD PRIMARY KEY (`SemesterID`);
+
+--
+-- Indexes for table `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`UserID`),
+  ADD UNIQUE KEY `Username` (`Username`),
+  ADD UNIQUE KEY `Email` (`Email`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `book`
+--
+ALTER TABLE `book`
+  MODIFY `BookID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
+
+--
+-- AUTO_INCREMENT for table `book_copy`
+--
+ALTER TABLE `book_copy`
+  MODIFY `CopyID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=143;
+
+--
+-- AUTO_INCREMENT for table `borrow`
+--
+ALTER TABLE `borrow`
+  MODIFY `BorrowID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `borrowing_record`
+--
+ALTER TABLE `borrowing_record`
+  MODIFY `RecordID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `management_log`
+--
+ALTER TABLE `management_log`
+  MODIFY `LogID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=75;
+
+--
+-- AUTO_INCREMENT for table `payment`
+--
+ALTER TABLE `payment`
+  MODIFY `PaymentID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `penalty`
+--
+ALTER TABLE `penalty`
+  MODIFY `PenaltyID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `reservation`
+--
+ALTER TABLE `reservation`
+  MODIFY `ReservationID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `semester`
+--
+ALTER TABLE `semester`
+  MODIFY `SemesterID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `users`
+--
+ALTER TABLE `users`
+  MODIFY `UserID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `book_copy`
+--
+ALTER TABLE `book_copy`
+  ADD CONSTRAINT `book_copy_ibfk_1` FOREIGN KEY (`BookID`) REFERENCES `book` (`BookID`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `borrow`
+--
+ALTER TABLE `borrow`
+  ADD CONSTRAINT `borrow_fk_copy` FOREIGN KEY (`CopyID`) REFERENCES `book_copy` (`CopyID`) ON DELETE CASCADE,
+  ADD CONSTRAINT `borrow_ibfk_1` FOREIGN KEY (`UserID`) REFERENCES `users` (`UserID`) ON DELETE CASCADE,
+  ADD CONSTRAINT `borrow_ibfk_3` FOREIGN KEY (`SemesterID`) REFERENCES `semester` (`SemesterID`) ON DELETE SET NULL,
+  ADD CONSTRAINT `borrow_ibfk_4` FOREIGN KEY (`ProcessedBy`) REFERENCES `users` (`UserID`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `borrowing_record`
+--
+ALTER TABLE `borrowing_record`
+  ADD CONSTRAINT `borrowing_record_ibfk_1` FOREIGN KEY (`BorrowID`) REFERENCES `borrow` (`BorrowID`) ON DELETE CASCADE,
+  ADD CONSTRAINT `borrowing_record_ibfk_2` FOREIGN KEY (`ChangedBy`) REFERENCES `users` (`UserID`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `management_log`
+--
+ALTER TABLE `management_log`
+  ADD CONSTRAINT `management_log_ibfk_1` FOREIGN KEY (`UserID`) REFERENCES `users` (`UserID`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `payment`
+--
+ALTER TABLE `payment`
+  ADD CONSTRAINT `payment_ibfk_1` FOREIGN KEY (`UserID`) REFERENCES `users` (`UserID`) ON DELETE CASCADE,
+  ADD CONSTRAINT `payment_ibfk_2` FOREIGN KEY (`PenaltyID`) REFERENCES `penalty` (`PenaltyID`) ON DELETE SET NULL,
+  ADD CONSTRAINT `payment_ibfk_3` FOREIGN KEY (`ReservationID`) REFERENCES `reservation` (`ReservationID`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `penalty`
+--
+ALTER TABLE `penalty`
+  ADD CONSTRAINT `penalty_ibfk_1` FOREIGN KEY (`BorrowID`) REFERENCES `borrow` (`BorrowID`) ON DELETE CASCADE,
+  ADD CONSTRAINT `penalty_ibfk_2` FOREIGN KEY (`UserID`) REFERENCES `users` (`UserID`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `reservation`
+--
+ALTER TABLE `reservation`
+  ADD CONSTRAINT `reservation_ibfk_1` FOREIGN KEY (`UserID`) REFERENCES `users` (`UserID`) ON DELETE CASCADE,
+  ADD CONSTRAINT `reservation_ibfk_2` FOREIGN KEY (`BookID`) REFERENCES `book` (`BookID`) ON DELETE CASCADE,
+  ADD CONSTRAINT `reservation_ibfk_3` FOREIGN KEY (`FulfilledBy`) REFERENCES `borrow` (`BorrowID`) ON DELETE SET NULL;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
