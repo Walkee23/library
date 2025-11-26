@@ -1,0 +1,16 @@
+RewriteEngine On
+RewriteBase /librarysystem/
+
+# Redirect app/views URLs to the correct location
+RewriteRule ^views/(.*)$ app/views/$1 [L]
+
+# Handle other requests
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ public/index.php [L]
+
+# Allow access to static files
+<FilesMatch "\.(html|css|js|png|jpg|jpeg|gif|ico|svg|ttf|woff|woff2|eot|otf|json|xml|txt)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>

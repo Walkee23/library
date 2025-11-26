@@ -1,0 +1,128 @@
+-- Create Database (if it doesn't exist)
+CREATE DATABASE IF NOT EXISTS library_system;
+USE library_system;
+
+-- Drop tables if they already exist to ensure a clean start
+DROP TABLE IF EXISTS Borrowing_Record, Payment, Penalty, Reservation, Borrow, Book, Semester, Users;
+
+-- ==========================
+-- USER TABLE
+-- ==========================
+CREATE TABLE Users (
+    UserID INT AUTO_INCREMENT PRIMARY KEY,
+    Username VARCHAR(20) UNIQUE NOT NULL,
+    Name VARCHAR(100) NOT NULL,
+    Role ENUM('Student','Teacher','Librarian','Staff') NOT NULL,
+    Email VARCHAR(100) UNIQUE NOT NULL,
+    PasswordHash VARCHAR(255) NOT NULL
+);
+
+-- ==========================
+-- SEMESTER TABLE
+-- ==========================
+CREATE TABLE Semester (
+    SemesterID INT AUTO_INCREMENT PRIMARY KEY,
+    StartDate DATE NOT NULL,
+    EndDate DATE NOT NULL,
+    Student_Borrow_Limit INT DEFAULT 3
+);
+
+-- ==========================
+-- BOOK TABLE
+-- ==========================
+CREATE TABLE Book (
+    BookID INT AUTO_INCREMENT PRIMARY KEY,
+    Title VARCHAR(150),
+    Author VARCHAR(100),
+    ISBN VARCHAR(30) UNIQUE,
+    -- NEW COLUMN: Stores book cost for replacement fee logic
+    Price DECIMAL(10,2), 
+    -- NEW COLUMN: Stores path to cover image
+    CoverImagePath VARCHAR(255), 
+    Category VARCHAR(50) NULL,
+    CopiesTotal INT DEFAULT 1,
+    CopiesAvailable INT DEFAULT 1,
+    Status ENUM('Available','Reserved','Borrowed','Archived') DEFAULT 'Available'
+);
+
+-- ==========================
+-- BORROW TABLE
+-- ==========================
+CREATE TABLE Borrow (
+    BorrowID INT AUTO_INCREMENT PRIMARY KEY,
+    UserID INT NOT NULL,
+    BookID INT NOT NULL,
+    SemesterID INT,
+    BorrowDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    DueDate DATETIME NOT NULL,
+    ReturnDate DATETIME NULL,
+    Status ENUM('Borrowed','Returned','Overdue','Lost') DEFAULT 'Borrowed',
+    ProcessedBy INT,
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
+    FOREIGN KEY (BookID) REFERENCES Book(BookID) ON DELETE CASCADE,
+    FOREIGN KEY (SemesterID) REFERENCES Semester(SemesterID) ON DELETE SET NULL,
+    FOREIGN KEY (ProcessedBy) REFERENCES Users(UserID) ON DELETE SET NULL
+);
+
+-- ==========================
+-- RESERVATION TABLE
+-- ==========================
+CREATE TABLE Reservation (
+    ReservationID INT AUTO_INCREMENT PRIMARY KEY,
+    UserID INT NOT NULL,
+    BookID INT NOT NULL,
+    ReservationDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    ExpiryDate DATETIME NOT NULL,
+    Status ENUM('Active','Expired','Cancelled','Fulfilled') DEFAULT 'Active',
+    FulfilledBy INT NULL,
+    
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
+    FOREIGN KEY (BookID) REFERENCES Book(BookID) ON DELETE CASCADE,
+    FOREIGN KEY (FulfilledBy) REFERENCES Users(UserID) ON DELETE SET NULL
+);
+
+-- ==========================
+-- PENALTY TABLE (For Replacement Fees)
+-- ==========================
+CREATE TABLE Penalty (
+    PenaltyID INT AUTO_INCREMENT PRIMARY KEY,
+    BorrowID INT NOT NULL,
+    UserID INT NOT NULL,
+    AmountDue DECIMAL(10,2) NOT NULL,
+    IssuedDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PaidDate DATETIME NULL,
+    Status ENUM('Pending','Paid') DEFAULT 'Pending',
+    FOREIGN KEY (BorrowID) REFERENCES Borrow(BorrowID) ON DELETE CASCADE,
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+
+-- ==========================
+-- PAYMENT TABLE
+-- ==========================
+CREATE TABLE Payment (
+    PaymentID INT AUTO_INCREMENT PRIMARY KEY,
+    UserID INT NOT NULL,
+    PenaltyID INT,
+    ReservationID INT NULL,
+    RecordID INT NULL,
+    Amount DECIMAL(10,2) NOT NULL,
+    PaymentDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    Method ENUM('Cash','GCash','Card') DEFAULT 'Cash',
+    Status ENUM('Pending','Completed') DEFAULT 'Completed',
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
+    FOREIGN KEY (PenaltyID) REFERENCES Penalty(PenaltyID) ON DELETE SET NULL,
+    FOREIGN KEY (ReservationID) REFERENCES Reservation(ReservationID) ON DELETE SET NULL
+);
+
+-- ==========================
+-- BORROWING RECORD TABLE (Audit log)
+-- ==========================
+CREATE TABLE Borrowing_Record (
+    RecordID INT AUTO_INCREMENT PRIMARY KEY,
+    BorrowID INT NOT NULL,
+    ActionTimestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    ActionType ENUM('Borrowed','Returned','Cleared') NOT NULL,
+    ChangedBy INT,
+    FOREIGN KEY (BorrowID) REFERENCES Borrow(BorrowID) ON DELETE CASCADE,
+    FOREIGN KEY (ChangedBy) REFERENCES Users(UserID) ON DELETE SET NULL
+);
