@@ -67,11 +67,9 @@ $recentActivity = $data['recentActivity'] ?? [];
                 <span class="material-icons">menu</span><span class="logo-text">📚 Smart Library</span>
             </div>
             <ul class="nav-list">
-                <li class="nav-item active"><a href="librarian.php"><span class="nav-icon material-icons">dashboard</span><span class="text">Dashboard</span></a></li>
-                <li class="nav-item"><a href="book_inventory.php"><span class="nav-icon material-icons">inventory_2</span><span class="text">Book Inventory</span></a></li>
-                <li class="nav-item"><a href="add_book.php"><span class="nav-icon material-icons">add_box</span><span class="text">Add New Book</span></a></li>
-                <li class="nav-item"><a href="update_book.php"><span class="nav-icon material-icons">edit</span><span class="text">Update Book</span></a></li>
-                <li class="nav-item"><a href="archive_book.php"><span class="nav-icon material-icons">archive</span><span class="text">Archive Book</span></a></li>
+                <li class="nav-item active"><a href="librarian.php"><span class="material-icons nav-icon">dashboard</span><span class="logo-text">Dashboard</span></a></li>
+                <li class="nav-item"><a href="book_inventory.php"><span class="material-icons nav-icon">inventory_2</span><span class="logo-text">Inventory</span></a></li>
+                <li class="nav-item"><a href="manage_books.php"><span class="material-icons nav-icon">edit_note</span><span class="logo-text">Manage Books</span></a></li>
             </ul>
             <div class="logout nav-item"><a href="login.php"><span class="nav-icon material-icons">logout</span><span class="text">Logout</span></a></div>
         </div>

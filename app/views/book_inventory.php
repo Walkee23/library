@@ -1,11 +1,12 @@
 <?php
 session_start();
 require_once __DIR__ . '/../../config.php';
-require_once __DIR__ . '/../controllers/LibrarianController.php';
+require_once __DIR__ . '/../controllers/BooksController.php'; // Changed Controller
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Librarian') exit(header("Location: ".BASE_URL."/views/login.php"));
 
-$controller = new LibrarianController($pdo, $_SESSION['user_id']);
+// Use BooksController now
+$controller = new BooksController($pdo, $_SESSION['user_id']);
 $data = $controller->getInventory($_GET);
 
 // Extract data
@@ -13,15 +14,15 @@ $books = $data['books'];
 $categories = $data['categories'];
 $total_pages = $data['total_pages'];
 $current_page = $data['current_page'];
-$search_term = $data['search_term'];
-$status_filter = $data['status_filter'];
-$category_filter = $data['category_filter'];
+$search_term = $data['filters']['search'];
+$status_filter = $data['filters']['status'];
+$category_filter = $data['filters']['category'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Manage Book Inventory</title>
+    <title>Book Inventory</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
@@ -59,12 +60,11 @@ $category_filter = $data['category_filter'];
         <div id="sidebar-menu" class="sidebar">
             <div class="logo" onclick="toggleSidebar()"><span class="material-icons">menu</span><span class="logo-text">📚 Smart Library</span></div>
             <ul class="nav-list">
-                <li class="nav-item"><a href="librarian.php"><span class="material-icons" style="margin-right:20px;">dashboard</span><span class="text">Dashboard</span></a></li>
-                <li class="nav-item active"><a href="book_inventory.php"><span class="material-icons" style="margin-right:20px;">inventory_2</span><span class="text">Inventory</span></a></li>
-                <li class="nav-item"><a href="add_book.php"><span class="material-icons" style="margin-right:20px;">add_box</span><span class="text">Add Book</span></a></li>
-                <li class="nav-item"><a href="update_book.php"><span class="material-icons" style="margin-right:20px;">edit</span><span class="text">Update</span></a></li>
-                <li class="nav-item"><a href="archive_book.php"><span class="material-icons" style="margin-right:20px;">archive</span><span class="text">Archive</span></a></li>
+                <li class="nav-item"><a href="librarian.php"><span class="material-icons" style="margin-right:20px;">dashboard</span><span class="logo-text">Dashboard</span></a></li>
+                <li class="nav-item active"><a href="book_inventory.php"><span class="material-icons" style="margin-right:20px;">inventory_2</span><span class="logo-text">Inventory</span></a></li>
+                <li class="nav-item"><a href="manage_books.php"><span class="material-icons" style="margin-right:20px;">edit_note</span><span class="logo-text">Manage Books</span></a></li>
             </ul>
+            <div class="logout nav-item"><a href="login.php"><span class="material-icons" style="margin-right:20px;">logout</span><span class="logo-text">Logout</span></a></div>
         </div>
 
         <div id="main-content-area" class="main-content">
@@ -77,7 +77,6 @@ $category_filter = $data['category_filter'];
                 <select name="status" class="filter-select" onchange="this.form.submit()">
                     <option value="All" <?php echo $status_filter=='All'?'selected':''; ?>>All Status</option>
                     <option value="Available" <?php echo $status_filter=='Available'?'selected':''; ?>>Available</option>
-                    <option value="Reserved" <?php echo $status_filter=='Reserved'?'selected':''; ?>>Reserved</option>
                     <option value="Borrowed" <?php echo $status_filter=='Borrowed'?'selected':''; ?>>Borrowed</option>
                 </select>
                 <select name="category" class="filter-select" onchange="this.form.submit()">
